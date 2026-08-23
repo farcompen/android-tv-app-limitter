@@ -9,7 +9,13 @@ data class ManagedAppEntity(
     val appName: String,
     val enabled: Boolean = false,
     val dailyLimitMinutes: Int = 120,
-    val isChildAllowed: Boolean = true
+    val isChildAllowed: Boolean = true,
+
+    // PIN ile verilen geçici ek süre
+    val extraAllowedMinutes: Int = 0,
+
+    // Geçici iznin bitiş zamanı
+    val bypassUntil: Long = 0L
 )
 
 @Entity(
@@ -34,29 +40,32 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateApp(app: ManagedAppEntity)
 
-   @Query("SELECT * FROM daily_usage WHERE packageName = :pkg AND date = :date LIMIT 1")
-suspend fun getDailyUsage(pkg: String, date: String): DailyUsageEntity?
+    @Query("SELECT * FROM daily_usage WHERE packageName = :pkg AND date = :date LIMIT 1")
+    suspend fun getDailyUsage(
+        pkg: String,
+        date: String
+    ): DailyUsageEntity?
 
-@Insert(onConflict = OnConflictStrategy.REPLACE)
-suspend fun insertOrUpdateUsage(usage: DailyUsageEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateUsage(usage: DailyUsageEntity)
 
-@Query("""
-    SELECT COALESCE(SUM(usedSeconds), 0)
-    FROM daily_usage
-    WHERE date = :date
-""")
-suspend fun getTotalUsageForDate(date: String): Int
+    @Query("""
+        SELECT COALESCE(SUM(usedSeconds), 0)
+        FROM daily_usage
+        WHERE date = :date
+    """)
+    suspend fun getTotalUsageForDate(date: String): Int
 
-@Query("""
-    SELECT *
-    FROM daily_usage
-    WHERE date = :date
-    ORDER BY usedSeconds DESC
-""")
-suspend fun getDailyUsageByDate(date: String): List<DailyUsageEntity>
+    @Query("""
+        SELECT *
+        FROM daily_usage
+        WHERE date = :date
+        ORDER BY usedSeconds DESC
+    """)
+    suspend fun getDailyUsageByDate(date: String): List<DailyUsageEntity>
 
-@Query("SELECT * FROM daily_usage WHERE date >= :startDate")
-suspend fun getUsageHistory(startDate: String): List<DailyUsageEntity>
+    @Query("SELECT * FROM daily_usage WHERE date >= :startDate")
+    suspend fun getUsageHistory(startDate: String): List<DailyUsageEntity>
 }
 
 @Database(
@@ -64,7 +73,7 @@ suspend fun getUsageHistory(startDate: String): List<DailyUsageEntity>
         ManagedAppEntity::class,
         DailyUsageEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -85,10 +94,11 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tv_timeguard_local.db"
                 )
-                    .build()
-                    .also {
-                        instance = it
-                    }
+                .fallbackToDestructiveMigration()
+                .build()
+                .also {
+                    instance = it
+                }
             }
         }
     }
