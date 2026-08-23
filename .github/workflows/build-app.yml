@@ -18,48 +18,44 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
-          cache-dependency-path: 'TvTimeGuard_AndroidTV_Project (2)/**/*.gradle*'
 
-      - name: Ensure Gradle Wrapper Jar Exists
+      - name: Prepare Gradle Wrapper
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
         run: |
           mkdir -p gradle/wrapper
 
-          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Downloading gradle-wrapper.jar..."
+          curl -fL \
+            -o gradle/wrapper/gradle-wrapper.jar \
+            https://services.gradle.org/distributions/gradle-8.4-wrapper.jar
 
-            curl -fL -o gradle/wrapper/gradle-wrapper.jar \
-              https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar
-          fi
+          echo "Checking Gradle Wrapper JAR..."
+          jar tf gradle/wrapper/gradle-wrapper.jar | grep GradleWrapperMain
 
-          echo "Gradle Wrapper files:"
-          ls -lh gradle/wrapper/
-
-      - name: Grant Execute Permission for Gradlew
+      - name: Grant Execute Permission
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
         run: chmod +x gradlew
 
       - name: Verify Gradle Wrapper
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
         run: |
-          ls -lh gradlew
-          ls -lh gradle/wrapper/
           ./gradlew --version
 
-      - name: Build Debug & Release APK
+      - name: Build Release APK
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
-        run: |
-          ./gradlew assembleRelease assembleDebug --stacktrace
+        run: ./gradlew assembleRelease --stacktrace
 
-      - name: Upload Release APK Artifact
+      - name: Build Debug APK
+        working-directory: './TvTimeGuard_AndroidTV_Project (2)'
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: TvTimeGuard_XiaomiTV_Release_APK
           path: './TvTimeGuard_AndroidTV_Project (2)/app/build/outputs/apk/release/*.apk'
           if-no-files-found: error
 
-      - name: Upload Debug APK Artifact
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: TvTimeGuard_XiaomiTV_Debug_APK
