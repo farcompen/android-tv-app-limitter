@@ -55,6 +55,23 @@ interface AppDao {
     suspend fun getUsageHistory(
         startDate: String
     ): List<DailyUsageEntity>
+    @Query("""
+    SELECT COALESCE(SUM(usedSeconds), 0)
+    FROM daily_usage
+    WHERE date = :date
+""")
+suspend fun getTotalUsageForDate(date: String): Int
+
+@Query("""
+    SELECT *
+    FROM daily_usage
+    WHERE date = :date
+    ORDER BY usedSeconds DESC
+""")
+suspend fun getDailyUsageByDate(date: String): List<DailyUsageEntity>
+
+@Query("SELECT * FROM daily_usage WHERE date >= :startDate")
+suspend fun getUsageHistory(startDate: String): List<DailyUsageEntity>
 }
 
 @Database(
