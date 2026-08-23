@@ -25,64 +25,36 @@ data class DailyUsageEntity(
 @Dao
 interface AppDao {
 
-    @Query("SELECT * FROM managed_apps ORDER BY appName ASC")
+    @Query("SELECT * FROM managed_apps")
     suspend fun getAllApps(): List<ManagedAppEntity>
 
-    @Query("""
-        SELECT * FROM managed_apps
-        WHERE packageName = :pkg
-        LIMIT 1
-    """)
+    @Query("SELECT * FROM managed_apps WHERE packageName = :pkg LIMIT 1")
     suspend fun getAppByPackage(pkg: String): ManagedAppEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateApp(app: ManagedAppEntity)
 
-    @Query("""
-        SELECT * FROM daily_usage
-        WHERE packageName = :pkg AND date = :date
-        LIMIT 1
-    """)
+    @Query("SELECT * FROM daily_usage WHERE packageName = :pkg AND date = :date LIMIT 1")
     suspend fun getDailyUsage(
         pkg: String,
         date: String
     ): DailyUsageEntity?
 
     @Query("""
-        SELECT * FROM daily_usage
-        WHERE date = :date
-        ORDER BY usedSeconds DESC
+        INSERT OR REPLACE INTO daily_usage
+        (packageName, date, usedSeconds)
+        VALUES (:pkg, :date, :used)
     """)
-    suspend fun getDailyUsageByDate(
-        date: String
-    ): List<DailyUsageEntity>
+    suspend fun insertOrUpdateUsage(
+        pkg: String,
+        date: String,
+        used: Int
+    )
 
-    @Query("""
-        SELECT * FROM daily_usage
-        WHERE date >= :startDate
-        ORDER BY date ASC, usedSeconds DESC
-    """)
+    @Query("SELECT * FROM daily_usage WHERE date >= :startDate")
     suspend fun getUsageHistory(
         startDate: String
     ): List<DailyUsageEntity>
-
-    @Query("""
-        SELECT COALESCE(SUM(usedSeconds), 0)
-        FROM daily_usage
-        WHERE date = :date
-    """)
-    suspend fun getTotalUsageForDate(
-        date: String
-    ): Int
-
-    @Query("""
-        SELECT COALESCE(SUM(usedSeconds), 0)
-        FROM daily_usage
-        WHERE date >= :startDate
-    """)
-    suspend fun getTotalUsageSince(
-        startDate: String
-    ): Int
 }
 
 @Database(
