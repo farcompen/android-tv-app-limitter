@@ -20,11 +20,13 @@ class AppForegroundMonitorService : AccessibilityService() {
     private var currentForegroundPackage: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
+
     private val scope = CoroutineScope(Dispatchers.IO)
 
     private lateinit var db: AppDatabase
 
     private val tickerRunnable = object : Runnable {
+
         override fun run() {
 
             currentForegroundPackage?.let { pkgName ->
@@ -39,6 +41,7 @@ class AppForegroundMonitorService : AccessibilityService() {
     }
 
     override fun onCreate() {
+
         super.onCreate()
 
         db = AppDatabase.getInstance(applicationContext)
@@ -65,25 +68,22 @@ class AppForegroundMonitorService : AccessibilityService() {
 
         scope.launch {
 
-            val appLimit =
-                db.appDao().getAppByPackage(pkgName)
-                    ?: return@launch
+            val appLimit = db.appDao().getAppByPackage(pkgName)
+                ?: return@launch
 
             if (!appLimit.enabled) {
                 return@launch
             }
 
-            val today =
-                SimpleDateFormat(
-                    "yyyy-MM-dd",
-                    Locale.getDefault()
-                ).format(Date())
+            val today = SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.getDefault()
+            ).format(Date())
 
-            val usage =
-                db.appDao().getDailyUsage(
-                    pkgName,
-                    today
-                )
+            val usage = db.appDao().getDailyUsage(
+                pkgName,
+                today
+            )
 
             val newSeconds =
                 (usage?.usedSeconds ?: 0) + 1
@@ -96,16 +96,35 @@ class AppForegroundMonitorService : AccessibilityService() {
                 )
             )
 
-            val maxSeconds =
+            // Normal limit
+            val normalLimitSeconds =
                 appLimit.dailyLimitMinutes * 60
 
-            if (newSeconds >= maxSeconds) {
+            // PIN ile verilen ek süre
+            val extraLimitSeconds =
+                appLimit.extraAllowedMinutes * 60
+
+            // Toplam izin
+            val totalLimitSeconds =
+                normalLimitSeconds + extraLimitSeconds
+
+            // Geçici PIN izni hâlâ aktif mi?
+            val bypassActive =
+                appLimit.bypassUntil > System.currentTimeMillis()
+
+            // Eğer PIN ile geçici izin verilmişse
+            // normal limite geldiğinde tekrar kilitleme.
+            if (bypassActive) {
+                return@launch
+            }
+
+            if (newSeconds >= totalLimitSeconds) {
 
                 triggerLockScreen(
                     pkgName,
                     appLimit.appName,
                     newSeconds,
-                    maxSeconds
+                    totalLimitSeconds
                 )
             }
         }
@@ -118,36 +137,20 @@ class AppForegroundMonitorService : AccessibilityService() {
         limit: Int
     ) {
 
-        val intent =
-            Intent(
-                this,
-                LockOverlayActivity::class.java
-            ).apply {
+        val intent = Intent(
+            this,
+            LockOverlayActivity::class.java
+        ).apply {
 
-                flags =
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags =
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
 
-                putExtra(
-                    "PACKAGE_NAME",
-                    pkg
-                )
-
-                putExtra(
-                    "APP_NAME",
-                    name
-                )
-
-                putExtra(
-                    "USED_SECONDS",
-                    used
-                )
-
-                putExtra(
-                    "LIMIT_SECONDS",
-                    limit
-                )
-            }
+            putExtra("PACKAGE_NAME", pkg)
+            putExtra("APP_NAME", name)
+            putExtra("USED_SECONDS", used)
+            putExtra("LIMIT_SECONDS", limit)
+        }
 
         startActivity(intent)
     }
@@ -161,6 +164,11 @@ class AppForegroundMonitorService : AccessibilityService() {
                     ?: return@launch
 
             if (!app.enabled) {
+                return@launch
+            }
+
+            // PIN ile verilen geçici izin aktifse
+            if (app.bypassUntil > System.currentTimeMillis()) {
                 return@launch
             }
 
@@ -180,7 +188,10 @@ class AppForegroundMonitorService : AccessibilityService() {
                 usage?.usedSeconds ?: 0
 
             val maxSec =
-                app.dailyLimitMinutes * 60
+                (
+                    app.dailyLimitMinutes +
+                    app.extraAllowedMinutes
+                ) * 60
 
             if (usedSec >= maxSec) {
 
@@ -201,6 +212,8 @@ class AppForegroundMonitorService : AccessibilityService() {
 
         super.onDestroy()
 
-        handler.removeCallbacks(tickerRunnable)
+        handler.removeCallbacks(
+            tickerRunnable
+        )
     }
 }
