@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TV TimeGuard</string>
+    <string name="app_name">Cagan TV TimeGuard</string>
     <string name="accessibility_desc">Xiaomi TV ve Android TV için aktif uygulamanın kullanım süresini yerel veritabanında sayar ve limit dolduğunda kilit ekranı açar.</string>
 </resources>
