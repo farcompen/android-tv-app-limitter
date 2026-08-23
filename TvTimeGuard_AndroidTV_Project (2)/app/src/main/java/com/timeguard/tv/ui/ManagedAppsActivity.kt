@@ -7,6 +7,7 @@ import com.timeguard.tv.R
 import com.timeguard.tv.data.db.AppDatabase
 import com.timeguard.tv.data.db.ManagedAppEntity
 import kotlinx.coroutines.*
+import android.app.AlertDialog
 
 class ManagedAppsActivity : AppCompatActivity() {
 
