@@ -57,7 +57,13 @@ class AppForegroundMonitorService : AccessibilityService() {
             val usage = db.appDao().getDailyUsage(pkgName, today)
             
             val newSeconds = (usage?.usedSeconds ?: 0) + 1
-            db.appDao().insertOrUpdateUsage(pkgName, today, newSeconds)
+          db.appDao().insertOrUpdateUsage(
+    DailyUsageEntity(
+        packageName = pkg,
+        date = today,
+        usedSeconds = newSeconds
+    )
+)
 
             val maxSeconds = appLimit.dailyLimitMinutes * 60
             if (newSeconds >= maxSeconds) {
