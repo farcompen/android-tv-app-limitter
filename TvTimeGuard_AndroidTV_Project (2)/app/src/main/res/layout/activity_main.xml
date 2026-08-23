@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <TextView
+        android:id="@+id/txtTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🛡️ TV TimeGuard - Ebeveyn Kontrolü"
+        android:textColor="@color/cyan_accent"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/txtStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Yerel koruma durumu yükleniyor..."
+        android:textColor="@color/text_muted"
+        android:textSize="16sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnAccessibility"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:backgroundTint="@color/cyan_accent"
+            android:text="1. Erişilebilirlik İzni Ver"
+            android:textColor="@color/bg_dark" />
+
+        <Button
+            android:id="@+id/btnUsageAccess"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:backgroundTint="@color/card_dark"
+            android:text="2. Kullanım Erişimi İzni"
+            android:textColor="@color/text_white" />
+
+        <Button
+            android:id="@+id/btnOverlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/card_dark"
+            android:text="3. Üstte Gösterme İzni"
+            android:textColor="@color/text_white" />
+    </LinearLayout>
+
+</LinearLayout>
