@@ -19,34 +19,43 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Prepare Gradle Wrapper
+      - name: Setup Gradle 8.4
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.4'
+
+      - name: Generate Gradle Wrapper
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
         run: |
-          mkdir -p gradle/wrapper
+          rm -f gradle/wrapper/gradle-wrapper.jar
 
-          curl -fL \
-            -o gradle/wrapper/gradle-wrapper.jar \
-            https://services.gradle.org/distributions/gradle-8.4-wrapper.jar
+          gradle wrapper \
+            --gradle-version 8.4 \
+            --distribution-type bin
 
-          echo "Checking Gradle Wrapper JAR..."
-          jar tf gradle/wrapper/gradle-wrapper.jar | grep GradleWrapperMain
-
-      - name: Grant Execute Permission
-        working-directory: './TvTimeGuard_AndroidTV_Project (2)'
-        run: chmod +x gradlew
+          echo "Wrapper files:"
+          ls -lh gradle/wrapper/
 
       - name: Verify Gradle Wrapper
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
         run: |
+          chmod +x gradlew
+
+          echo "Checking GradleWrapperMain..."
+          jar tf gradle/wrapper/gradle-wrapper.jar | grep GradleWrapperMain
+
+          echo "Testing Gradle Wrapper..."
           ./gradlew --version
 
       - name: Build Release APK
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
-        run: ./gradlew assembleRelease --stacktrace
+        run: |
+          ./gradlew assembleRelease --stacktrace
 
       - name: Build Debug APK
         working-directory: './TvTimeGuard_AndroidTV_Project (2)'
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
