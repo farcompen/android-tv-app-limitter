@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.timeguard.tv.data.db.DailyUsageEntity
 
 class AppForegroundMonitorService : AccessibilityService() {
 
