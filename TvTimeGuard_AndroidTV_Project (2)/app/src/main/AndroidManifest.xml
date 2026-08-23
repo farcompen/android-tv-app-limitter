@@ -52,7 +52,13 @@
             android:launchMode="singleInstance"
             android:screenOrientation="landscape"
             android:theme="@style/Theme.TransparentLockOverlay" />
+<activity
+    android:name=".ui.StatisticsActivity"
+    android:exported="false" />
 
+<activity
+    android:name=".ui.ManagedAppsActivity"
+    android:exported="false" />
         <!-- Arka Plan Ön Plan Takip Erişilebilirlik Servisi -->
         <service
             android:name=".service.AppForegroundMonitorService"
