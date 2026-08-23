@@ -34,28 +34,13 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateApp(app: ManagedAppEntity)
 
-    @Query("SELECT * FROM daily_usage WHERE packageName = :pkg AND date = :date LIMIT 1")
-    suspend fun getDailyUsage(
-        pkg: String,
-        date: String
-    ): DailyUsageEntity?
+   @Query("SELECT * FROM daily_usage WHERE packageName = :pkg AND date = :date LIMIT 1")
+suspend fun getDailyUsage(pkg: String, date: String): DailyUsageEntity?
 
-    @Query("""
-        INSERT OR REPLACE INTO daily_usage
-        (packageName, date, usedSeconds)
-        VALUES (:pkg, :date, :used)
-    """)
-    suspend fun insertOrUpdateUsage(
-        pkg: String,
-        date: String,
-        used: Int
-    )
+@Insert(onConflict = OnConflictStrategy.REPLACE)
+suspend fun insertOrUpdateUsage(usage: DailyUsageEntity)
 
-    @Query("SELECT * FROM daily_usage WHERE date >= :startDate")
-    suspend fun getUsageHistory(
-        startDate: String
-    ): List<DailyUsageEntity>
-    @Query("""
+@Query("""
     SELECT COALESCE(SUM(usedSeconds), 0)
     FROM daily_usage
     WHERE date = :date
