@@ -36,9 +36,37 @@ gradlew.bat assembleRelease
 3. **Ayarlar > Erişilebilirlik > TV TimeGuard** servisini AÇIK yapın.
 4. **Ayarlar > Özel Uygulama Erişimi > Kullanım Erişimi** iznini onaylayın.
 5. Tamamen yerel SQLite veritabanı ile süre kontrolü başlayacaktır!
-# Cagan TV TimeGuard v1.1.0
+# Cagan TV TimeGuard v1.4.0
 
-Android TV/Google TV cihazlarında uygulama bazında günlük kullanım limiti uygular.
+Android telefon, Android TV ve Google TV cihazlarında uygulama bazında günlük kullanım limiti uygular.
+
+## v1.4.0 yenilikleri
+
+- Telefonda ve Android TV'de kullanıcı tarafından açılabilen kurulu uygulama ve oyunlar otomatik taranır.
+- Uygulama adı veya paket adına göre arama yapılabilir.
+- Listeden istenen uygulamaya günlük süre limiti verilebilir veya limit kapatılabilir.
+- Yeniden Tara düğmesi, sonradan kurulan uygulamaları listeye ekler.
+- Uygulama listesi ve seçilen limitler yalnızca cihazda işlenir.
+
+## v1.3.0 yenilikleri
+
+- Android telefon desteği eklendi; TV özelliği artık zorunlu değil.
+- Telefon ve TV launcher girişleri aynı uygulama paketinde çalışır.
+- Telefon YouTube, Netflix, Prime Video, Spotify ve TikTok paketleri takip listesine eklendi.
+- Dikey telefon ekranında ana sayfa kartları ve yönetim butonları alt alta yerleşir.
+- Ayarlar ekranı PIN istemeden açılır.
+- Ayarlar içine kurtarma koduyla unutulan PIN'i sıfırlama seçeneği eklendi.
+- Kurtarma kodu ayarlar açıldığında gizlenir; görüntüleme/yenileme mevcut PIN gerektirir.
+- Banner alt metni tüm cihazları kapsayacak şekilde “ANDROID” olarak güncellendi.
+
+## v1.2.0 yenilikleri
+
+- Uygulama açılışındaki PIN kaldırıldı; ana ekran ve istatistikler doğrudan açılır.
+- Uygulama limitleri, güvenlik ayarları ve sistem izinleri ebeveyn PIN'i ile korunur.
+- Erişilebilirlik ve kullanım erişimi açılmadan önce açık kullanım açıklaması gösterilir.
+- Google Play için AAB üretimi ve güvenli upload-key yapılandırması eklendi.
+- Play Store metinleri, gizlilik politikası, yayın kontrol listesi ve mağaza görselleri eklendi.
+- Gereksiz özel izinler kaldırıldı; release sürümü artık debug anahtarıyla imzalanmaz.
 
 ## v1.1.0 yenilikleri
 

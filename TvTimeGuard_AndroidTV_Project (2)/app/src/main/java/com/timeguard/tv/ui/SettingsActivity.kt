@@ -2,6 +2,7 @@ package com.timeguard.tv.ui
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -19,9 +20,10 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         pinManager = PinManager(this)
         recoveryText = findViewById(R.id.txtRecoveryCode)
-        showRecoveryCode()
+        recoveryText.text = "••••-••••"
         findViewById<Button>(R.id.btnChangePin).setOnClickListener { showChangePinDialog() }
         findViewById<Button>(R.id.btnRegenerateRecovery).setOnClickListener { confirmRegenerate() }
+        findViewById<Button>(R.id.btnRecoverPin).setOnClickListener { showRecoveryDialog() }
     }
 
     private fun showChangePinDialog() {
@@ -55,8 +57,8 @@ class SettingsActivity : AppCompatActivity() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
         }
         AlertDialog.Builder(this)
-            .setTitle("Yeni kurtarma kodu")
-            .setMessage("Eski kurtarma kodu geçersiz olacaktır.")
+            .setTitle("Kurtarma kodunu göster / yenile")
+            .setMessage("Mevcut PIN doğrulanınca yeni kurtarma kodu oluşturulur ve eski kod geçersiz olur.")
             .setView(input)
             .setNegativeButton("İptal", null)
             .setPositiveButton("Yenile") { _, _ ->
@@ -64,6 +66,34 @@ class SettingsActivity : AppCompatActivity() {
                     pinManager.regenerateRecoveryCode(); showRecoveryCode(); toast("Yeni kod oluşturuldu. Güvenli bir yere kaydedin.")
                 } else toast("PIN hatalı.")
             }.show()
+    }
+
+    private fun showRecoveryDialog() {
+        val form = layoutInflater.inflate(R.layout.dialog_recover_pin, null)
+        val recovery = form.findViewById<EditText>(R.id.edtRecoveryCode)
+        val newPin = form.findViewById<EditText>(R.id.edtRecoveryNewPin)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Unutulan PIN'i sıfırla")
+            .setMessage("Daha önce kaydettiğiniz kurtarma kodunu ve yeni PIN'i girin.")
+            .setView(form)
+            .setNegativeButton("İptal", null)
+            .setPositiveButton("PIN'i sıfırla", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val newValue = newPin.text.toString()
+                when {
+                    !PinManager.isValidPin(newValue) -> toast("Yeni PIN 4-8 rakam olmalıdır.")
+                    pinManager.resetPinWithRecovery(recovery.text.toString(), newValue) -> {
+                        recoveryText.text = "••••-••••"
+                        toast("PIN yenilendi. Yeni kurtarma kodunu mevcut PIN ile görüntüleyip kaydedin.")
+                        dialog.dismiss()
+                    }
+                    else -> toast("Kurtarma kodu hatalı.")
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun showRecoveryCode() { recoveryText.text = pinManager.getRecoveryCode() }

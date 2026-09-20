@@ -15,7 +15,7 @@ class TvTimeGuardApp : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        seedInitialAppsIfEmpty()
+        seedMissingSupportedApps()
     }
 
     private fun createNotificationChannels() {
@@ -32,19 +32,25 @@ class TvTimeGuardApp : Application() {
         }
     }
 
-    private fun seedInitialAppsIfEmpty() {
+    private fun seedMissingSupportedApps() {
         CoroutineScope(Dispatchers.IO).launch {
             val db = AppDatabase.getInstance(applicationContext)
-            val existing = db.appDao().getAllApps()
-            if (existing.isEmpty()) {
-                val defaults = listOf(
-                    ManagedAppEntity("com.google.android.youtube.tv", "YouTube TV", enabled = true, dailyLimitMinutes = 120),
-                    ManagedAppEntity("com.netflix.ninja", "Netflix TV", enabled = true, dailyLimitMinutes = 90),
-                    ManagedAppEntity("com.amazon.amazonvideo.livingroom", "Prime Video", enabled = false, dailyLimitMinutes = 120),
-                    ManagedAppEntity("com.disney.disneyplus", "Disney+", enabled = true, dailyLimitMinutes = 60),
-                    ManagedAppEntity("com.spotify.tv.android", "Spotify TV", enabled = false, dailyLimitMinutes = 180)
-                )
-                defaults.forEach { db.appDao().insertOrUpdateApp(it) }
+            val defaults = listOf(
+                ManagedAppEntity("com.google.android.youtube.tv", "YouTube TV", enabled = true, dailyLimitMinutes = 120),
+                ManagedAppEntity("com.google.android.youtube", "YouTube", enabled = true, dailyLimitMinutes = 120),
+                ManagedAppEntity("com.netflix.ninja", "Netflix TV", enabled = true, dailyLimitMinutes = 90),
+                ManagedAppEntity("com.netflix.mediaclient", "Netflix", enabled = true, dailyLimitMinutes = 90),
+                ManagedAppEntity("com.amazon.amazonvideo.livingroom", "Prime Video TV", enabled = false, dailyLimitMinutes = 120),
+                ManagedAppEntity("com.amazon.avod.thirdpartyclient", "Prime Video", enabled = false, dailyLimitMinutes = 120),
+                ManagedAppEntity("com.disney.disneyplus", "Disney+", enabled = true, dailyLimitMinutes = 60),
+                ManagedAppEntity("com.spotify.tv.android", "Spotify TV", enabled = false, dailyLimitMinutes = 180),
+                ManagedAppEntity("com.spotify.music", "Spotify", enabled = false, dailyLimitMinutes = 180),
+                ManagedAppEntity("com.zhiliaoapp.musically", "TikTok", enabled = false, dailyLimitMinutes = 60)
+            )
+            defaults.forEach { app ->
+                if (db.appDao().getAppByPackage(app.packageName) == null) {
+                    db.appDao().insertOrUpdateApp(app)
+                }
             }
         }
     }

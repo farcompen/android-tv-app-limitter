@@ -86,8 +86,6 @@ class AppForegroundMonitorService : AccessibilityService() {
         val bypassActive = app.bypassUntil > System.currentTimeMillis()
         if (!bypassActive && used >= totalLimit) {
             triggerLockScreen(foreground, app.appName, used, totalLimit)
-        } else {
-            TvFloatingHudService.updateProgress(this, app.appName, used, (totalLimit - used).coerceAtLeast(0))
         }
     }
 

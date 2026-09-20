@@ -3,12 +3,12 @@ package com.timeguard.tv.ui
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,16 +35,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnApps: Button
     private lateinit var btnAccessibility: Button
     private lateinit var btnUsageAccess: Button
-    private lateinit var btnOverlay: Button
     private lateinit var btnSettings: Button
     private lateinit var pinManager: PinManager
-    private var authenticated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
         pinManager = PinManager(this)
+        configureResponsiveLayout()
 
         txtStatus = findViewById(R.id.txtStatus)
         txtTodayUsage = findViewById(R.id.txtTodayUsage)
@@ -56,7 +55,6 @@ class MainActivity : AppCompatActivity() {
 
         btnAccessibility = findViewById(R.id.btnAccessibility)
         btnUsageAccess = findViewById(R.id.btnUsageAccess)
-        btnOverlay = findViewById(R.id.btnOverlay)
         btnSettings = findViewById(R.id.btnSettings)
 
         btnStatistics.setOnClickListener {
@@ -66,9 +64,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnApps.setOnClickListener {
-            startActivity(
-                Intent(this, ManagedAppsActivity::class.java)
-            )
+            requireParentPin("Uygulama limitlerini yönet") {
+                startActivity(Intent(this, ManagedAppsActivity::class.java))
+            }
         }
 
         btnSettings.setOnClickListener {
@@ -86,33 +84,17 @@ class MainActivity : AppCompatActivity() {
                 ).show()
 
             } else {
-
-                openSettings(
-                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                )
+                requireParentPin("Erişilebilirlik iznini yönet") {
+                    showAccessibilityDisclosure()
+                }
             }
         }
 
         btnUsageAccess.setOnClickListener {
-            openSettings(
-                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            )
+            requireParentPin("Kullanım erişimi iznini yönet") {
+                showUsageAccessDisclosure()
+            }
         }
-
-        btnOverlay.setOnClickListener {
-
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION
-            )
-
-            intent.data = Uri.parse(
-                "package:$packageName"
-            )
-
-            openSettings(intent)
-        }
-
-        showLoginDialog()
     }
 
     override fun onResume() {
@@ -120,28 +102,45 @@ class MainActivity : AppCompatActivity() {
         loadDashboard()
     }
 
-    private fun showLoginDialog() {
-        if (authenticated || isFinishing) return
+    private fun configureResponsiveLayout() {
+        if (resources.configuration.smallestScreenWidthDp >= 600) return
+        listOf<LinearLayout>(
+            findViewById(R.id.summaryRow),
+            findViewById(R.id.managementRow)
+        ).forEach { row ->
+            row.orientation = LinearLayout.VERTICAL
+            for (index in 0 until row.childCount) {
+                val child = row.getChildAt(index)
+                child.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = if (index == 0) 0 else 12
+                    bottomMargin = 4
+                }
+            }
+        }
+    }
+
+    private fun requireParentPin(title: String, onSuccess: () -> Unit) {
         val input = EditText(this).apply {
             hint = "Ebeveyn PIN"
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             maxLines = 1
         }
         val dialog = AlertDialog.Builder(this)
-            .setTitle("TV TimeGuard")
-            .setMessage("Yönetim ekranına girmek için PIN'i girin.")
+            .setTitle(title)
+            .setMessage("Bu işlem ebeveyn PIN'i gerektirir.")
             .setView(input)
-            .setCancelable(false)
-            .setNegativeButton("Çıkış") { _, _ -> finish() }
+            .setNegativeButton("İptal", null)
             .setNeutralButton("PIN'i unuttum", null)
-            .setPositiveButton("Giriş", null)
+            .setPositiveButton("Devam", null)
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 if (pinManager.verifyPin(input.text.toString())) {
-                    authenticated = true
                     dialog.dismiss()
-                    if (pinManager.isDefaultPin()) Toast.makeText(this, "Güvenlik için Ayarlar'dan varsayılan PIN'i değiştirin.", Toast.LENGTH_LONG).show()
+                    onSuccess()
                 } else {
                     input.text.clear()
                     Toast.makeText(this, "PIN hatalı.", Toast.LENGTH_SHORT).show()
@@ -158,7 +157,7 @@ class MainActivity : AppCompatActivity() {
         val newPin = form.findViewById<EditText>(R.id.edtRecoveryNewPin)
         val dialog = AlertDialog.Builder(this)
             .setTitle("PIN kurtarma")
-            .setMessage("Ayarlar ekranında verilen kurtarma kodunu ve yeni PIN'i girin. Kod da yoksa Android ayarlarından uygulama verisini temizlemek gerekir; istatistikler silinir.")
+            .setMessage("Daha önce kaydettiğiniz kurtarma kodunu ve yeni PIN'i girin.")
             .setView(form)
             .setNegativeButton("İptal", null)
             .setPositiveButton("PIN'i sıfırla", null)
@@ -169,12 +168,32 @@ class MainActivity : AppCompatActivity() {
                 if (!PinManager.isValidPin(pin)) {
                     Toast.makeText(this, "Yeni PIN 4-8 rakam olmalıdır.", Toast.LENGTH_SHORT).show()
                 } else if (pinManager.resetPinWithRecovery(recovery.text.toString(), pin)) {
-                    Toast.makeText(this, "PIN yenilendi. Güvenlik için yeni kurtarma kodunu Ayarlar'dan kaydedin.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "PIN yenilendi. Yeni kurtarma kodunu Ayarlar'dan kaydedin.", Toast.LENGTH_LONG).show()
                     dialog.dismiss()
-                } else Toast.makeText(this, "Kurtarma kodu hatalı.", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Kurtarma kodu hatalı.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
         dialog.show()
+    }
+
+    private fun showAccessibilityDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("Erişilebilirlik erişimi")
+            .setMessage("TV TimeGuard, hangi uygulamanın ekranda açık olduğunu algılayıp belirlediğiniz süre dolduğunda kilit ekranını göstermek için erişilebilirlik servisini kullanır. Ekran içeriği okunmaz, kaydedilmez veya cihaz dışına gönderilmez.")
+            .setNegativeButton("Vazgeç", null)
+            .setPositiveButton("Anladım, ayarları aç") { _, _ -> openSettings(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            .show()
+    }
+
+    private fun showUsageAccessDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("Kullanım erişimi")
+            .setMessage("TV TimeGuard, YouTube gibi uygulamalarda sayacın doğru çalışması için yalnızca ön plandaki uygulama adını ve kullanım zamanını cihaz üzerinde işler. Veriler yerel kalır ve üçüncü taraflarla paylaşılmaz.")
+            .setNegativeButton("Vazgeç", null)
+            .setPositiveButton("Anladım, ayarları aç") { _, _ -> openSettings(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            .show()
     }
 
     private fun loadDashboard() {

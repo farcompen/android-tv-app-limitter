@@ -49,6 +49,7 @@
             android:textStyle="bold" />
 
         <LinearLayout
+            android:id="@+id/summaryRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
@@ -89,6 +90,7 @@
             android:textStyle="bold" />
 
         <LinearLayout
+            android:id="@+id/managementRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -155,16 +157,6 @@
             android:background="@drawable/tv_button_selector"
             android:textColor="@color/text_white"
             android:text="2. Kullanım Erişimi İzni"
-            android:textSize="17sp" />
-
-        <Button
-            android:id="@+id/btnOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="65dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/tv_button_selector"
-            android:textColor="@color/text_white"
-            android:text="3. Üstte Gösterme İzni"
             android:textSize="17sp" />
 
     </LinearLayout>
