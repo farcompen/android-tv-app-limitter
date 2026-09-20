@@ -1,143 +1,118 @@
 package com.timeguard.tv.ui
 
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.timeguard.tv.R
 import com.timeguard.tv.data.db.AppDatabase
-import kotlinx.coroutines.*
+import com.timeguard.tv.data.db.DailyUsageEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import kotlin.math.max
 
 class StatisticsActivity : AppCompatActivity() {
-
     private lateinit var container: LinearLayout
-
-    private val scope = CoroutineScope(
-        SupervisorJob() + Dispatchers.Main
-    )
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_statistics)
-
         container = findViewById(R.id.statisticsContainer)
-
         loadStatistics()
     }
 
     private fun loadStatistics() {
-
         scope.launch {
-
-            val usage = withContext(Dispatchers.IO) {
-
-                val db =
-                    AppDatabase.getInstance(applicationContext)
-
-                val date =
-                    java.text.SimpleDateFormat(
-                        "yyyy-MM-dd",
-                        java.util.Locale.getDefault()
-                    ).format(java.util.Date())
-
-                db.appDao().getDailyUsageByDate(date)
+            val model = withContext(Dispatchers.IO) {
+                val dao = AppDatabase.getInstance(applicationContext).appDao()
+                val dates = lastSevenDates()
+                val history = dao.getUsageHistory(dates.first())
+                val names = dao.getAllApps().associate { it.packageName to it.appName }
+                Triple(dates, history, names)
             }
-
             container.removeAllViews()
-
-            if (usage.isEmpty()) {
-
-                addText(
-                    "Bugün henüz kullanım verisi bulunmuyor."
-                )
-
-                return@launch
-            }
-
-            usage.forEach { item ->
-
-                val appName = withContext(Dispatchers.IO) {
-
-                    AppDatabase
-                        .getInstance(applicationContext)
-                        .appDao()
-                        .getAppByPackage(item.packageName)
-                        ?.appName
-                        ?: item.packageName
-                }
-
-                addText(
-                    "$appName\n" +
-                    "Kullanım: ${formatDuration(item.usedSeconds)}"
-                )
-            }
+            addSectionTitle("Son 7 Gün")
+            addWeeklyChart(model.first, model.second)
+            addSectionTitle("Bugünkü Uygulama Dağılımı")
+            val todayItems = model.second.filter { it.date == model.first.last() }.sortedByDescending { it.usedSeconds }
+            if (todayItems.isEmpty()) addEmpty() else addAppChart(todayItems, model.third)
         }
     }
 
-    private fun addText(text: String) {
+    private fun addWeeklyChart(dates: List<String>, usage: List<DailyUsageEntity>) {
+        val totals = dates.associateWith { date -> usage.filter { it.date == date }.sumOf { it.usedSeconds } }
+        val maximum = max(1, totals.values.maxOrNull() ?: 1)
+        val chart = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.BOTTOM
+            setPadding(18, 18, 18, 18)
+            background = cardBackground()
+        }
+        dates.forEach { date ->
+            val seconds = totals[date] ?: 0
+            val column = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM }
+            val value = TextView(this).apply { text = formatDuration(seconds); textSize = 13f; setTextColor(getColor(R.color.text_white)); gravity = Gravity.CENTER }
+            val bar = TextView(this).apply {
+                background = GradientDrawable().apply { cornerRadius = 10f; setColor(getColor(R.color.cyan_accent)) }
+            }
+            val barHeight = 18 + (150f * seconds / maximum).toInt()
+            column.addView(value, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            column.addView(bar, LinearLayout.LayoutParams(34, barHeight).apply { topMargin = 8 })
+            column.addView(TextView(this).apply {
+                text = date.substring(5).replace("-", "/"); textSize = 13f; setTextColor(getColor(R.color.text_muted)); gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 })
+            chart.addView(column, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = 5; marginEnd = 5 })
+        }
+        container.addView(chart, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+    }
 
-        val view = TextView(this)
+    private fun addAppChart(items: List<DailyUsageEntity>, names: Map<String, String>) {
+        val maximum = max(1, items.maxOf { it.usedSeconds })
+        items.forEach { item ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 16, 20, 16); background = cardBackground() }
+            row.addView(TextView(this).apply {
+                text = "${names[item.packageName] ?: item.packageName}  •  ${formatDuration(item.usedSeconds)}"
+                textSize = 17f; setTextColor(getColor(R.color.text_white))
+            })
+            row.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = maximum; progress = item.usedSeconds
+                progressTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.emerald_accent))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 20).apply { topMargin = 10 })
+            container.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = 12 })
+        }
+    }
 
-        view.text = text
-        view.textSize = 18f
-        view.setTextColor(
-            getColor(R.color.text_white)
-        )
+    private fun addSectionTitle(text: String) {
+        container.addView(TextView(this).apply {
+            this.text = text; textSize = 21f; setTextColor(getColor(R.color.cyan_accent)); setPadding(0, 18, 0, 12)
+        })
+    }
 
-        view.setPadding(
-            24,
-            20,
-            24,
-            20
-        )
+    private fun addEmpty() { container.addView(TextView(this).apply { text = "Bugün henüz kullanım verisi yok."; textSize = 17f; setTextColor(getColor(R.color.text_muted)); setPadding(18, 18, 18, 18); background = cardBackground() }) }
 
-        view.setBackgroundColor(
-            getColor(R.color.card_dark)
-        )
+    private fun cardBackground() = GradientDrawable().apply { cornerRadius = 18f; setColor(getColor(R.color.card_dark)); setStroke(1, getColor(R.color.card_border)) }
 
-        val params =
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-
-        params.setMargins(
-            0,
-            0,
-            0,
-            12
-        )
-
-        container.addView(
-            view,
-            params
-        )
+    private fun lastSevenDates(): List<String> {
+        val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -6) }
+        return List(7) { format.format(cal.time).also { cal.add(Calendar.DAY_OF_YEAR, 1) } }
     }
 
     private fun formatDuration(seconds: Int): String {
-
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val secs = seconds % 60
-
-        return when {
-
-            hours > 0 ->
-                "${hours}s ${minutes}dk"
-
-            minutes > 0 ->
-                "${minutes}dk ${secs}sn"
-
-            else ->
-                "${secs}sn"
-        }
+        val hours = seconds / 3600; val minutes = (seconds % 3600) / 60
+        return if (hours > 0) "${hours}s ${minutes}dk" else if (minutes > 0) "${minutes}dk" else "${seconds}sn"
     }
 
-    override fun onDestroy() {
-
-        scope.cancel()
-
-        super.onDestroy()
-    }
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
 }

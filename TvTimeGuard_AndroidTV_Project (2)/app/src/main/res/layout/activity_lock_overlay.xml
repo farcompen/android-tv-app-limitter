@@ -24,7 +24,7 @@
         android:layout_marginTop="24dp"
         android:backgroundTint="@color/cyan_accent"
         android:gravity="center"
-        android:hint="Ebeveyn PIN (1234)"
+        android:hint="Ebeveyn PIN"
         android:inputType="numberPassword"
         android:maxLength="4"
         android:textColor="@color/text_white"

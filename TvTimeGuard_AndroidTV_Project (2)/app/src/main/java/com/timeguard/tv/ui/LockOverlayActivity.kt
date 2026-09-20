@@ -1,5 +1,6 @@
 package com.timeguard.tv.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -8,9 +9,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.timeguard.tv.R
 import com.timeguard.tv.data.db.AppDatabase
+import com.timeguard.tv.data.db.DailyUsageEntity
+import com.timeguard.tv.security.PinManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class LockOverlayActivity : AppCompatActivity() {
 
@@ -47,7 +53,7 @@ class LockOverlayActivity : AppCompatActivity() {
         }
 
         btnHome.setOnClickListener {
-            finishAffinity()
+            goHome()
         }
     }
 
@@ -55,7 +61,7 @@ class LockOverlayActivity : AppCompatActivity() {
 
         val entered = edtPin.text.toString()
 
-        if (entered != "1234") {
+        if (!PinManager(this).verifyPin(entered)) {
             Toast.makeText(
                 this,
                 "Hatalı PIN Kodu!",
@@ -69,16 +75,12 @@ class LockOverlayActivity : AppCompatActivity() {
         // Room işlemleri coroutine içerisinde yapılmalı
         CoroutineScope(Dispatchers.IO).launch {
 
-            val app = db.appDao().getAppByPackage(pkg)
-
-            if (app != null) {
-
-                // Mevcut günlük limiti 30 dakika artır
-                val updatedApp = app.copy(
-                    dailyLimitMinutes = app.dailyLimitMinutes + 30
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val usage = db.appDao().getDailyUsage(pkg, today)
+            if (usage != null) {
+                db.appDao().insertOrUpdateUsage(
+                    DailyUsageEntity(pkg, today, (usage.usedSeconds - 30 * 60).coerceAtLeast(0))
                 )
-
-                db.appDao().insertOrUpdateApp(updatedApp)
             }
 
             // UI işlemleri Main Thread'de yapılmalı
@@ -97,6 +99,14 @@ class LockOverlayActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        finishAffinity()
+        goHome()
+    }
+
+    private fun goHome() {
+        startActivity(Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        })
+        finish()
     }
 }

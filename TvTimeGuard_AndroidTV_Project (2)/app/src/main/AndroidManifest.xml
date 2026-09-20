@@ -66,6 +66,10 @@
             android:name=".ui.ManagedAppsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false" />
+
         <!-- Ön Plan Takip Erişilebilirlik Servisi -->
         <service
             android:name=".service.AppForegroundMonitorService"

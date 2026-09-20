@@ -149,6 +149,14 @@ class ManagedAppsActivity : AppCompatActivity() {
         limitButton.text =
             "Günlük Limiti Değiştir"
 
+        limitButton.setTextColor(
+            getColor(R.color.text_white)
+        )
+
+        limitButton.setBackgroundResource(
+            R.drawable.tv_button_selector
+        )
+
         limitButton.setOnClickListener {
 
             showLimitDialog(

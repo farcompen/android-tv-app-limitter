@@ -1,17 +1,21 @@
 package com.timeguard.tv.ui
 
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.timeguard.tv.R
 import com.timeguard.tv.data.db.AppDatabase
 import com.timeguard.tv.service.AppForegroundMonitorService
+import com.timeguard.tv.security.PinManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,11 +36,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnAccessibility: Button
     private lateinit var btnUsageAccess: Button
     private lateinit var btnOverlay: Button
+    private lateinit var btnSettings: Button
+    private lateinit var pinManager: PinManager
+    private var authenticated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
+        pinManager = PinManager(this)
 
         txtStatus = findViewById(R.id.txtStatus)
         txtTodayUsage = findViewById(R.id.txtTodayUsage)
@@ -49,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         btnAccessibility = findViewById(R.id.btnAccessibility)
         btnUsageAccess = findViewById(R.id.btnUsageAccess)
         btnOverlay = findViewById(R.id.btnOverlay)
+        btnSettings = findViewById(R.id.btnSettings)
 
         btnStatistics.setOnClickListener {
             startActivity(
@@ -60,6 +69,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 Intent(this, ManagedAppsActivity::class.java)
             )
+        }
+
+        btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         btnAccessibility.setOnClickListener {
@@ -98,11 +111,70 @@ class MainActivity : AppCompatActivity() {
 
             openSettings(intent)
         }
+
+        showLoginDialog()
     }
 
     override fun onResume() {
         super.onResume()
         loadDashboard()
+    }
+
+    private fun showLoginDialog() {
+        if (authenticated || isFinishing) return
+        val input = EditText(this).apply {
+            hint = "Ebeveyn PIN"
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            maxLines = 1
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("TV TimeGuard")
+            .setMessage("Yönetim ekranına girmek için PIN'i girin.")
+            .setView(input)
+            .setCancelable(false)
+            .setNegativeButton("Çıkış") { _, _ -> finish() }
+            .setNeutralButton("PIN'i unuttum", null)
+            .setPositiveButton("Giriş", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (pinManager.verifyPin(input.text.toString())) {
+                    authenticated = true
+                    dialog.dismiss()
+                    if (pinManager.isDefaultPin()) Toast.makeText(this, "Güvenlik için Ayarlar'dan varsayılan PIN'i değiştirin.", Toast.LENGTH_LONG).show()
+                } else {
+                    input.text.clear()
+                    Toast.makeText(this, "PIN hatalı.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { showRecoveryDialog() }
+        }
+        dialog.show()
+    }
+
+    private fun showRecoveryDialog() {
+        val form = layoutInflater.inflate(R.layout.dialog_recover_pin, null)
+        val recovery = form.findViewById<EditText>(R.id.edtRecoveryCode)
+        val newPin = form.findViewById<EditText>(R.id.edtRecoveryNewPin)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("PIN kurtarma")
+            .setMessage("Ayarlar ekranında verilen kurtarma kodunu ve yeni PIN'i girin. Kod da yoksa Android ayarlarından uygulama verisini temizlemek gerekir; istatistikler silinir.")
+            .setView(form)
+            .setNegativeButton("İptal", null)
+            .setPositiveButton("PIN'i sıfırla", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val pin = newPin.text.toString()
+                if (!PinManager.isValidPin(pin)) {
+                    Toast.makeText(this, "Yeni PIN 4-8 rakam olmalıdır.", Toast.LENGTH_SHORT).show()
+                } else if (pinManager.resetPinWithRecovery(recovery.text.toString(), pin)) {
+                    Toast.makeText(this, "PIN yenilendi. Güvenlik için yeni kurtarma kodunu Ayarlar'dan kaydedin.", Toast.LENGTH_LONG).show()
+                    dialog.dismiss()
+                } else Toast.makeText(this, "Kurtarma kodu hatalı.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        dialog.show()
     }
 
     private fun loadDashboard() {
