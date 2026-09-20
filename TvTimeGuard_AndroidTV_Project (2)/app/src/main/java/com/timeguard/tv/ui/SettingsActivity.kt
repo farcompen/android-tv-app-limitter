@@ -1,6 +1,7 @@
 package com.timeguard.tv.ui
 
 import android.app.AlertDialog
+import android.text.InputType
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
